@@ -128,7 +128,27 @@ def render_app() -> None:
     st.metric(label="Anomalies in view", value=anomaly_count)
 
     st.subheader("Signal over time")
-    chart_rows = build_signal_chart_rows(metrics)
+
+    available_sources = sorted({row.source_id for row in metrics})
+    available_signals = sorted({row.signal_name for row in metrics})
+    selected_source = st.selectbox(
+        label="Source",
+        options=["(all)", *available_sources],
+        index=0,
+    )
+    selected_signal = st.selectbox(
+        label="Signal",
+        options=["(all)", *available_signals],
+        index=0,
+    )
+
+    metrics_for_chart = metrics
+    if selected_source != "(all)":
+        metrics_for_chart = [row for row in metrics_for_chart if row.source_id == selected_source]
+    if selected_signal != "(all)":
+        metrics_for_chart = [row for row in metrics_for_chart if row.signal_name == selected_signal]
+
+    chart_rows = build_signal_chart_rows(metrics_for_chart)
     if not chart_rows:
         st.info("No data to chart yet (generate events first).")
     else:
