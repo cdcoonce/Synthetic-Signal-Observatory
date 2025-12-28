@@ -10,6 +10,7 @@ from synthetic_signal_observatory.duckdb_persistence import (
     append_synthetic_events,
     fetch_synthetic_events,
     normalize_synthetic_event,
+    reset_synthetic_events_table,
 )
 
 
@@ -83,3 +84,33 @@ def test_append_and_fetch_round_trip(tmp_path: Path) -> None:
     # Normalization applied
     assert fetched[-1].quality_score == 0.0
     assert fetched[-1].event_ts_utc.tzinfo is UTC
+
+
+def test_reset_synthetic_events_table_drops_table_and_is_idempotent(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "sso.duckdb"
+
+    inserted = append_synthetic_events(
+        db_path,
+        [
+            SyntheticEvent(
+                event_id="e1",
+                event_ts=datetime(2025, 12, 27, 12, 0, tzinfo=UTC),
+                source_id="s1",
+                signal_name="alpha",
+                signal_value=1.0,
+                quality_score=0.5,
+                run_id="r1",
+            )
+        ],
+    )
+    assert inserted == 1
+    assert fetch_synthetic_events(db_path)
+
+    reset_synthetic_events_table(db_path)
+    assert fetch_synthetic_events(db_path) == []
+
+    # Idempotent: dropping twice should not raise.
+    reset_synthetic_events_table(db_path)
+    assert fetch_synthetic_events(db_path) == []

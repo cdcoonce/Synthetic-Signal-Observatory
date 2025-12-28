@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "duckdb",
-  "streamlit",
+  "streamlit>=1.33",
 ]
 
 [dependency-groups]

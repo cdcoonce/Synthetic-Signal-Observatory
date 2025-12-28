@@ -34,8 +34,20 @@ It is intentionally lightweight and execution-focused.
 - [x] Prevent blank Altair charts (serialize timestamps; add regression tests)
 - [x] Add chart filters (source/signal) to reduce overplotting
 - [x] Make chart pan/zoom explore full DB history
-- [ ] Centralize app configuration (db path, batch size, seed) in one place
+- [x] Centralize app configuration (db path, batch size, seed) in one place
 - [ ] Add lightweight logging configuration for local runs (avoid noisy reruns)
+- [x] Add DB reset button (env-gated) to drop `synthetic_events`
+
+### Faux Real-Time Display (D-0006) ✅ COMPLETED
+
+- [x] Verify/pin Streamlit ≥ 1.33 in `pyproject.toml`
+- [x] Add `SSO_AUTO_REFRESH_INTERVAL` and `SSO_AUTO_RUN_DEFAULT` to config
+- [x] Add Live Mode toggle + interval slider to UI (outside fragment)
+- [x] Create `@st.fragment(run_every=...)` wrapper for chart/table section
+- [x] Conditionally generate events inside fragment when live mode enabled
+- [x] Add visual indicator (spinner / timestamp) for streaming state
+- [x] Write/adjust tests for new config options
+- [x] Update `.env.example` with new config vars
 
 ## NEXT
 
@@ -46,6 +58,7 @@ It is intentionally lightweight and execution-focused.
 - [ ] Enforce/dedupe `event_id` on insert (document the approach; consider constraints vs merge)
 - [ ] Add CI (GitHub Actions) to run `uv run pytest`
 - [ ] Make imports work without `tests/conftest.py` sys.path tweak (package/editable install)
+- [ ] Add data-retention/purge logic to prevent unbounded DB growth (live mode risk)
 
 ## LATER
 

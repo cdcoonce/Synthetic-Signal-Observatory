@@ -9,6 +9,8 @@ from synthetic_signal_observatory.app_services import (
     get_events_for_rolling_window,
     get_latest_events,
     get_total_event_count,
+    reset_database,
+    should_enable_db_reset,
 )
 
 from synthetic_signal_observatory.analytics import compute_rolling_metrics
@@ -139,3 +141,29 @@ def test_get_events_for_chart_can_fetch_full_history_and_filter(tmp_path: Path) 
     beta_events = get_events_for_chart(db_path, signal_name="beta", limit=None)
     assert beta_events
     assert all(event.signal_name == "beta" for event in beta_events)
+
+
+def test_reset_database_clears_events(tmp_path: Path) -> None:
+    db_path = tmp_path / "sso.duckdb"
+
+    generate_and_persist_events(
+        db_path=db_path,
+        count=5,
+        start_ts=datetime(2025, 12, 27, 12, 0, tzinfo=UTC),
+        run_id="run-1",
+        seed=123,
+        source_ids=["s1"],
+        signal_names=["alpha"],
+        step=timedelta(seconds=1),
+    )
+    assert get_total_event_count(db_path) == 5
+
+    reset_database(db_path)
+    assert get_total_event_count(db_path) == 0
+
+
+def test_should_enable_db_reset_requires_env_and_confirmation() -> None:
+    assert should_enable_db_reset(allow_db_reset=False, confirm_reset=False) is False
+    assert should_enable_db_reset(allow_db_reset=False, confirm_reset=True) is False
+    assert should_enable_db_reset(allow_db_reset=True, confirm_reset=False) is False
+    assert should_enable_db_reset(allow_db_reset=True, confirm_reset=True) is True

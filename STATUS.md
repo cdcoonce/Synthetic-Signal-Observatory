@@ -79,10 +79,18 @@ This is the fastest way for a new agent to orient.
 - Rolling analytics for the displayed window uses DuckDB lookback; metrics are only `None` when the database lacks sufficient history.
 - Chart supports filtering by `source_id` and `signal_name` to reduce overplotting.
 - Chart supports pan/zoom and plots full persisted history for exploration.
+- Database reset control exists but is disabled by default; enable with `SSO_ALLOW_DB_RESET=1` and confirm in UI.
+- **Live Mode** toggle and interval slider for faux real-time auto-generation (D-0006).
+- Config supports `SSO_AUTO_REFRESH_INTERVAL` and `SSO_AUTO_RUN_DEFAULT`.
+- `.env.example` documents all environment variables.
 
 ### In progress
-- Centralize app configuration (db path, batch size, seed).
 - Add lightweight logging configuration for local runs.
 
 ### Blocked / Risks
 - None currently; primary risk is query + chart performance as data volume grows (full-history plots).
+- Live mode may cause unbounded DB growth if left running; retention/purge logic is a future TODO.
+
+### Completed
+- Centralized app configuration (db path, batch size, seed) via `synthetic_signal_observatory.config`.
+- Faux real-time display using `st.fragment(run_every=...)` (D-0006: Accepted). Toggle enables auto-generation with configurable interval.

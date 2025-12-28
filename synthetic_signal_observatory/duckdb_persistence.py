@@ -27,6 +27,33 @@ logger = logging.getLogger(__name__)
 TABLE_NAME = "synthetic_events"
 
 
+def reset_synthetic_events_table(db_path: Path) -> None:
+    """Reset the DuckDB raw-events store by dropping the events table.
+
+    This implements the "reset" semantics used by the Streamlit UI:
+    - Drop the `synthetic_events` table if it exists.
+    - Leave the DuckDB file itself intact.
+
+    The operation is intentionally idempotent.
+
+    Parameters
+    ----------
+    db_path:
+        Path to the DuckDB database file.
+    """
+
+    if not isinstance(db_path, Path):
+        raise TypeError("db_path must be a pathlib.Path")
+
+    if not db_path.exists():
+        return
+
+    with duckdb.connect(str(db_path)) as connection:
+        connection.execute(f"DROP TABLE IF EXISTS {TABLE_NAME}")
+
+    logger.warning("Reset DuckDB table %s in %s", TABLE_NAME, db_path)
+
+
 @dataclass(frozen=True, slots=True)
 class SyntheticEvent:
     """A single raw synthetic event.

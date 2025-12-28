@@ -30,6 +30,10 @@ Run the dashboard:
 
 - `uv run streamlit run app.py`
 
+Optional configuration:
+
+- Environment variables are supported; see [.env.example](.env.example) for the list.
+
 The Streamlit entrypoint is `app.py`.
 
 ## Tests

@@ -17,10 +17,30 @@ from synthetic_signal_observatory.duckdb_persistence import (
     SyntheticEvent,
     append_synthetic_events,
     fetch_synthetic_events,
+    reset_synthetic_events_table,
 )
 from synthetic_signal_observatory.generator import generate_synthetic_events
 
 logger = logging.getLogger(__name__)
+
+
+def should_enable_db_reset(*, allow_db_reset: bool, confirm_reset: bool) -> bool:
+    """Return whether the UI should enable the database reset button.
+
+    Parameters
+    ----------
+    allow_db_reset:
+        Whether destructive reset controls are enabled (env-gated).
+    confirm_reset:
+        Whether the user has explicitly confirmed the destructive action.
+
+    Returns
+    -------
+    bool
+        True when the reset button should be enabled.
+    """
+
+    return bool(allow_db_reset and confirm_reset)
 
 
 def _require_timezone_aware(timestamp: datetime, *, field_name: str) -> None:
@@ -293,3 +313,19 @@ def get_total_event_count(db_path: Path) -> int:
     """
 
     return len(fetch_synthetic_events(db_path))
+
+
+def reset_database(db_path: Path) -> None:
+    """Reset the application's database state.
+
+    This is a thin wrapper around persistence reset behavior so the UI layer
+    can trigger a reset without importing persistence internals directly.
+
+    Parameters
+    ----------
+    db_path:
+        Path to the DuckDB database file.
+    """
+
+    reset_synthetic_events_table(db_path)
+    logger.warning("Application database reset requested for %s", db_path)

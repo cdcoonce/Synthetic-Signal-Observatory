@@ -120,3 +120,44 @@ Use bullets. Be explicit.
 - A local DuckDB database file will be created/updated during runs.
 - The dashboard and analytics steps can query DuckDB directly.
 - If we also write Parquet, it is an optimization/interop choice, not the system of record.
+
+### D-0005 — Database reset semantics (drop events table)
+
+- Status: Accepted
+- Date: 2025-12-28
+
+#### Context
+- The Streamlit dashboard is used interactively and can accumulate event rows quickly.
+- A "reset" control is useful during development and demos.
+- Reset is destructive and must be hard to trigger accidentally.
+
+#### Decision
+- Define "Reset database" as: `DROP TABLE IF EXISTS synthetic_events`.
+- Do NOT delete the DuckDB file.
+- Gate the UI control behind `SSO_ALLOW_DB_RESET` (default disabled) and a UI confirmation checkbox.
+
+#### Consequences
+- Reset is idempotent and fast.
+- Other potential tables (if added later) are preserved by reset unless explicitly included.
+- Users must opt in via an environment variable to expose destructive controls.
+
+### D-0006 — Faux real-time display via st.fragment
+
+- Status: Accepted
+- Date: 2025-12-28
+
+#### Context
+- The dashboard currently requires manual button clicks to generate new events.
+- A "live" or "streaming" feel is desirable for portfolio demos.
+- Streamlit 1.33+ provides `@st.fragment(run_every=...)` for partial-page auto-refresh.
+
+#### Decision
+- Implement faux real-time display using `st.fragment` with a configurable `run_every` interval.
+- Add a Live Mode toggle (off by default) and an interval slider.
+- Require Streamlit ≥ 1.33; do not implement fallback patterns.
+
+#### Consequences
+- Charts and tables update automatically when Live Mode is enabled.
+- Only the fragment re-executes; the rest of the page remains stable.
+- Database may grow unbounded if left running; future work may add retention/purge logic.
+- See `docs/planning/REALTIME_DISPLAY_PLAN.md` for full implementation details.
