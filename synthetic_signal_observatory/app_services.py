@@ -65,13 +65,13 @@ def _choose_effective_start_ts(
     """
 
     _require_timezone_aware(requested_start_ts, field_name="start_ts")
-    requested_start_ts_utc = requested_start_ts.astimezone(UTC)
+    requested_start_ts_utc = requested_start_ts.astimezone(UTC).replace(microsecond=0)
 
     latest = fetch_synthetic_events(db_path, limit=1)
     if not latest:
         return requested_start_ts_utc
 
-    latest_ts = latest[0].event_ts_utc
+    latest_ts = latest[0].event_ts_utc.replace(microsecond=0)
     if requested_start_ts_utc <= latest_ts:
         return latest_ts + step
 

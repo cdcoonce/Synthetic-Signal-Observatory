@@ -72,6 +72,7 @@ Prefer constraints over prose.
 
 - `event_id` MUST be globally unique.
 - `event_ts` MUST be timezone-aware and normalized to UTC.
+- New events SHOULD be snapped to a whole-second UTC grid (microsecond=0) to avoid chart-time precision collapse.
 - `quality_score` MUST be clamped to [0.0, 1.0].
 
 ### Notes
