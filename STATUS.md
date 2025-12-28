@@ -78,10 +78,11 @@ This is the fastest way for a new agent to orient.
 - New events are snapped to whole-second UTC timestamps and batches advance `start_ts` to avoid overlaps.
 - Rolling analytics for the displayed window uses DuckDB lookback; metrics are only `None` when the database lacks sufficient history.
 - Chart supports filtering by `source_id` and `signal_name` to reduce overplotting.
+- Chart supports pan/zoom and plots full persisted history for exploration.
 
 ### In progress
 - Centralize app configuration (db path, batch size, seed).
 - Add lightweight logging configuration for local runs.
 
 ### Blocked / Risks
-- None currently; next risks are mostly UX density and query performance as data grows.
+- None currently; primary risk is query + chart performance as data volume grows (full-history plots).

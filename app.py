@@ -21,6 +21,7 @@ import streamlit as st
 
 from synthetic_signal_observatory.app_services import (
     generate_and_persist_events,
+    get_events_for_chart,
     get_events_for_rolling_window,
     get_latest_events,
     get_total_event_count,
@@ -129,26 +130,40 @@ def render_app() -> None:
 
     st.subheader("Signal over time")
 
-    available_sources = sorted({row.source_id for row in metrics})
-    available_signals = sorted({row.signal_name for row in metrics})
+    # For pan/zoom exploration, chart the full persisted history (optionally
+    # filtered). Keep the UI tables limited to the latest rolling window.
+    chart_events_all = get_events_for_chart(db_path, limit=None)
+    available_sources = sorted({event.source_id for event in chart_events_all})
+    available_signals = sorted({event.signal_name for event in chart_events_all})
+
     selected_source = st.selectbox(
         label="Source",
         options=["(all)", *available_sources],
         index=0,
+        disabled=not chart_events_all,
     )
     selected_signal = st.selectbox(
         label="Signal",
         options=["(all)", *available_signals],
         index=0,
+        disabled=not chart_events_all,
     )
 
-    metrics_for_chart = metrics
-    if selected_source != "(all)":
-        metrics_for_chart = [row for row in metrics_for_chart if row.source_id == selected_source]
-    if selected_signal != "(all)":
-        metrics_for_chart = [row for row in metrics_for_chart if row.signal_name == selected_signal]
+    chart_source = None if selected_source == "(all)" else selected_source
+    chart_signal = None if selected_signal == "(all)" else selected_signal
+    chart_events = get_events_for_chart(
+        db_path,
+        source_id=chart_source,
+        signal_name=chart_signal,
+        limit=None,
+    )
+    chart_metrics = compute_rolling_metrics(
+        chart_events[::-1],
+        window_size=window_size,
+        z_threshold=z_threshold,
+    )
 
-    chart_rows = build_signal_chart_rows(metrics_for_chart)
+    chart_rows = build_signal_chart_rows(chart_metrics)
     if not chart_rows:
         st.info("No data to chart yet (generate events first).")
     else:

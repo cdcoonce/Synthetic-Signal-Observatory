@@ -5,6 +5,7 @@ from pathlib import Path
 
 from synthetic_signal_observatory.app_services import (
     generate_and_persist_events,
+    get_events_for_chart,
     get_events_for_rolling_window,
     get_latest_events,
     get_total_event_count,
@@ -112,3 +113,29 @@ def test_get_events_for_rolling_window_fetches_sufficient_lookback(tmp_path: Pat
     # Because the DB has enough history, rolling stats should be present.
     assert all(row.rolling_mean is not None for row in window_metrics)
     assert all(row.rolling_std is not None for row in window_metrics)
+
+
+def test_get_events_for_chart_can_fetch_full_history_and_filter(tmp_path: Path) -> None:
+    db_path = tmp_path / "sso.duckdb"
+
+    generate_and_persist_events(
+        db_path=db_path,
+        count=10,
+        start_ts=datetime(2025, 12, 27, 12, 0, tzinfo=UTC),
+        run_id="run-1",
+        seed=123,
+        source_ids=["s1", "s2"],
+        signal_names=["alpha", "beta"],
+        step=timedelta(seconds=1),
+    )
+
+    all_events = get_events_for_chart(db_path, limit=None)
+    assert len(all_events) == 10
+
+    s1_events = get_events_for_chart(db_path, source_id="s1", limit=None)
+    assert s1_events
+    assert all(event.source_id == "s1" for event in s1_events)
+
+    beta_events = get_events_for_chart(db_path, signal_name="beta", limit=None)
+    assert beta_events
+    assert all(event.signal_name == "beta" for event in beta_events)

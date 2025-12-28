@@ -97,4 +97,4 @@ def build_signal_over_time_chart(chart_rows: Sequence[Mapping[str, Any]]) -> alt
         size=alt.condition("datum.is_anomaly", alt.value(120), alt.value(30)),
     )
 
-    return line + points
+    return (line + points).interactive()
