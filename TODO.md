@@ -1,0 +1,62 @@
+# TODO.md — Work Queue & Planning
+
+This file tracks **actionable work items** for the repository.
+
+It is intentionally lightweight and execution-focused.
+
+---
+
+## How to use this file (IMPORTANT)
+
+- Prefer **small, testable tasks**
+- Use checklists
+- Reorder freely — this is not append-only
+- If a task changes architecture or behavior:
+  → Record a decision in `DECISIONS.md`
+
+---
+
+## Conventions
+
+- `[ ]` = not started
+- `[x]` = completed
+- Keep items scoped so they can be finished in one PR
+
+---
+
+## NOW
+
+<!-- Highest-priority work -->
+
+- [x] Add analytics controls in Streamlit (slider for `window_size`, slider for `z_threshold`)
+- [ ] Add at least one chart (signal over time) with anomalies visible
+- [ ] Centralize app configuration (db path, batch size, seed) in one place
+- [ ] Add lightweight logging configuration for local runs (avoid noisy reruns)
+
+## NEXT
+
+<!-- Important but not urgent -->
+
+- [ ] Add efficient DuckDB queries (e.g., `COUNT(*)`, latest N) without full-table fetch
+- [ ] Enforce/dedupe `event_id` on insert (document the approach; consider constraints vs merge)
+- [ ] Add CI (GitHub Actions) to run `uv run pytest`
+- [ ] Make imports work without `tests/conftest.py` sys.path tweak (package/editable install)
+
+## LATER
+
+<!-- Nice-to-have or exploratory -->
+
+- [ ] Add deployment notes + screenshots/GIFs to README
+- [ ] Add Streamlit Community Cloud deployment notes (uv setup, Python version)
+- [ ] Persist derived analytics outputs (optional; requires schema + decision)
+
+## DONE
+
+- [x] Confirm Streamlit framework (D-0003)
+- [x] Set up `uv` project (`pyproject.toml`, `uv.lock`) and document test/run commands
+- [x] Define initial raw event schema in ARCHITECTURE.md
+- [x] Implement DuckDB persistence helpers + tests
+- [x] Implement pure event generator + tests
+- [x] Wire Streamlit to generate, persist, and display latest events
+- [x] Implement rolling analytics + anomaly flag + tests; display in Streamlit
+

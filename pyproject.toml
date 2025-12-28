@@ -1,0 +1,22 @@
+[project]
+name = "synthetic-signal-observatory"
+version = "0.1.0"
+description = "Synthetic Signal Observatory: synthetic data + lightweight analytics + interactive dashboard."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "duckdb",
+  "streamlit",
+]
+
+[dependency-groups]
+dev = [
+  "pytest",
+]
+
+[tool.pytest.ini_options]
+# Prefer readable output for local/dev runs.
+addopts = "-ra -vv"
+
+[tool.uv]
+# Intentionally minimal to start; add dev dependencies once the first pure logic lands.
