@@ -92,7 +92,7 @@ def render_app() -> None:
             }
             for event in latest_events
         ],
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
     )
 
@@ -168,7 +168,7 @@ def render_app() -> None:
         st.info("No data to chart yet (generate events first).")
     else:
         chart = build_signal_over_time_chart(chart_rows)
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width='stretch')
 
     st.dataframe(
         [
@@ -184,7 +184,7 @@ def render_app() -> None:
             }
             for row in metrics
         ],
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
     )
 
