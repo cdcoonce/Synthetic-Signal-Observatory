@@ -72,6 +72,7 @@ Prefer constraints over prose.
 
 - `event_id` MUST be globally unique.
 - `event_ts` MUST be timezone-aware and normalized to UTC.
+- New events SHOULD be snapped to a whole-second UTC grid (microsecond=0) to avoid chart-time precision collapse.
 - `quality_score` MUST be clamped to [0.0, 1.0].
 
 ### Notes
@@ -85,3 +86,9 @@ Prefer constraints over prose.
 - Rolling stats use a **lookback window** of prior values (excluding the current event).
 - Rolling stats are only emitted once a **full window** exists; earlier rows have `None` stats.
 - An anomaly is flagged when `abs(z_score) >= threshold` and rolling std > 0.
+
+## 2025-12-27 — Generation invariant (timestamp continuity)
+
+- To keep time-series charts stable (Vega-Lite millisecond precision) and avoid “collapsed” points,
+  the app service layer MUST advance the next batch's `start_ts` to be **after the latest persisted**
+  `event_ts` (specifically `latest_event_ts + step`) when appending new data.

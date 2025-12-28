@@ -39,6 +39,22 @@ def test_generate_synthetic_events_produces_utc_timezone_aware_timestamps() -> N
     assert events[1].event_ts > events[0].event_ts
 
 
+def test_generate_synthetic_events_snaps_to_whole_seconds() -> None:
+    events = generate_synthetic_events(
+        count=3,
+        start_ts=datetime(2025, 12, 27, 12, 0, 0, 123456, tzinfo=UTC),
+        run_id="run-1",
+        seed=123,
+        source_ids=["s1"],
+        signal_names=["alpha"],
+        step=timedelta(seconds=1),
+    )
+
+    assert all(event.event_ts.microsecond == 0 for event in events)
+    assert events[0].event_ts == datetime(2025, 12, 27, 12, 0, 0, tzinfo=UTC)
+    assert events[1].event_ts == datetime(2025, 12, 27, 12, 0, 1, tzinfo=UTC)
+
+
 def test_generate_synthetic_events_quality_score_in_range() -> None:
     events = generate_synthetic_events(
         count=50,

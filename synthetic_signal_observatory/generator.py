@@ -111,7 +111,9 @@ def generate_synthetic_events(
 
     rng = random.Random(seed)
 
-    start_ts_utc = start_ts.astimezone(UTC)
+    # Snap to a whole-second grid to avoid microsecond-level timestamp tracks
+    # which can collapse to the same rendered instant in Vega-Lite/Altair.
+    start_ts_utc = start_ts.astimezone(UTC).replace(microsecond=0)
 
     events: list[SyntheticEvent] = []
     current_ts = start_ts_utc
