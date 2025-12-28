@@ -5,9 +5,12 @@ from pathlib import Path
 
 from synthetic_signal_observatory.app_services import (
     generate_and_persist_events,
+    get_events_for_rolling_window,
     get_latest_events,
     get_total_event_count,
 )
+
+from synthetic_signal_observatory.analytics import compute_rolling_metrics
 
 
 def test_generate_and_persist_and_read_back(tmp_path: Path) -> None:
@@ -70,3 +73,42 @@ def test_generate_and_persist_advances_start_ts_to_avoid_overlaps(tmp_path: Path
     min_run2_ts = min(event.event_ts_utc for event in run2)
 
     assert min_run2_ts > max_run1_ts
+
+
+def test_get_events_for_rolling_window_fetches_sufficient_lookback(tmp_path: Path) -> None:
+    db_path = tmp_path / "sso.duckdb"
+
+    # Generate enough history so rolling stats exist for all window events.
+    generate_and_persist_events(
+        db_path=db_path,
+        count=20,
+        start_ts=datetime(2025, 12, 27, 12, 0, tzinfo=UTC),
+        run_id="run-1",
+        seed=123,
+        source_ids=["s1"],
+        signal_names=["alpha"],
+        step=timedelta(seconds=1),
+    )
+
+    window_limit = 10
+    window_size = 5
+    window_events, lookback_events = get_events_for_rolling_window(
+        db_path,
+        window_limit=window_limit,
+        window_size=window_size,
+    )
+
+    assert len(window_events) == window_limit
+    assert len(lookback_events) >= window_limit + window_size
+
+    metrics_all = compute_rolling_metrics(
+        lookback_events[::-1],
+        window_size=window_size,
+        z_threshold=3.0,
+    )
+    window_ids = {event.event_id for event in window_events}
+    window_metrics = [row for row in metrics_all if row.event_id in window_ids]
+
+    # Because the DB has enough history, rolling stats should be present.
+    assert all(row.rolling_mean is not None for row in window_metrics)
+    assert all(row.rolling_std is not None for row in window_metrics)
