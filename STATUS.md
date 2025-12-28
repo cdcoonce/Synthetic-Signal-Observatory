@@ -60,6 +60,7 @@ This is the fastest way for a new agent to orient.
 - Pure synthetic event generator implemented with pytest coverage.
 - Streamlit app wired to generate + persist + display latest events.
 - Rolling analytics (mean/std + anomaly flag) implemented with pytest coverage and displayed.
+- App service layer advances `start_ts` when appending batches to avoid timestamp overlaps that can collapse at chart precision.
 
 ### Decisions locked in
 - Environment/dependency management: `uv` (D-0002: Accepted).

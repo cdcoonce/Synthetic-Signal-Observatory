@@ -116,17 +116,20 @@ def render_app() -> None:
     st.metric(label="Anomalies in view", value=anomaly_count)
 
     st.subheader("Signal over time")
-    chart_rows = [
-        {
-            "event_ts": row.event_ts_utc,
-            "source_id": row.source_id,
-            "signal_name": row.signal_name,
-            "signal_value": row.signal_value,
-            "is_anomaly": row.is_anomaly,
-            "z_score": row.z_score,
-        }
-        for row in metrics
-    ]
+    chart_rows = sorted(
+        [
+            {
+                "event_ts": row.event_ts_utc,
+                "source_id": row.source_id,
+                "signal_name": row.signal_name,
+                "signal_value": row.signal_value,
+                "is_anomaly": row.is_anomaly,
+                "z_score": row.z_score,
+            }
+            for row in metrics
+        ],
+        key=lambda r: r["event_ts"],
+    )
 
     # Avoid hard-coded colors; use size/opacity to emphasize anomalies.
     base = (
@@ -134,6 +137,8 @@ def render_app() -> None:
         .encode(
             x=alt.X("event_ts:T", title="Event timestamp (UTC)"),
             y=alt.Y("signal_value:Q", title="Signal value"),
+            # Explicit order avoids occasionally jumbled line connections.
+            order=alt.Order("event_ts:T"),
             detail=["source_id:N", "signal_name:N"],
             tooltip=[
                 alt.Tooltip("event_ts:T"),
