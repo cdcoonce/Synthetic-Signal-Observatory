@@ -21,6 +21,7 @@ import streamlit as st
 
 from synthetic_signal_observatory.app_services import (
     generate_and_persist_events,
+    get_events_for_rolling_window,
     get_latest_events,
     get_total_event_count,
 )
@@ -111,11 +112,18 @@ def render_app() -> None:
         step=0.5,
     )
 
-    metrics = compute_rolling_metrics(
-        latest_events[::-1],
+    window_events, lookback_events = get_events_for_rolling_window(
+        db_path,
+        window_limit=20,
+        window_size=window_size,
+    )
+    metrics_all = compute_rolling_metrics(
+        lookback_events[::-1],
         window_size=window_size,
         z_threshold=z_threshold,
     )
+    window_event_ids = {event.event_id for event in window_events}
+    metrics = [row for row in metrics_all if row.event_id in window_event_ids]
     anomaly_count = sum(1 for row in metrics if row.is_anomaly)
     st.metric(label="Anomalies in view", value=anomaly_count)
 

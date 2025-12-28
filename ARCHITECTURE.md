@@ -84,7 +84,8 @@ Prefer constraints over prose.
 - Analytics is computed as a **pure function** over event data.
 - Metrics are computed **per group**: (`source_id`, `signal_name`).
 - Rolling stats use a **lookback window** of prior values (excluding the current event).
-- Rolling stats are only emitted once a **full window** exists; earlier rows have `None` stats.
+- The dashboard MUST fetch enough prior history from DuckDB so rolling stats are available for all events shown in the current UI window.
+- Rolling stats are only `None` when the database truly lacks a full lookback window for that group.
 - An anomaly is flagged when `abs(z_score) >= threshold` and rolling std > 0.
 
 ## 2025-12-27 — Generation invariant (timestamp continuity)

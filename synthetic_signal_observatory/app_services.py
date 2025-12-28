@@ -156,6 +156,90 @@ def get_latest_events(db_path: Path, *, limit: int) -> list[NormalizedSyntheticE
     return fetch_synthetic_events(db_path, limit=limit)
 
 
+def get_events_for_rolling_window(
+    db_path: Path,
+    *,
+    window_limit: int,
+    window_size: int,
+    max_fetch_limit: int = 5_000,
+) -> tuple[list[NormalizedSyntheticEvent], list[NormalizedSyntheticEvent]]:
+    """Return (window_events, lookback_events) for rolling analytics.
+
+    Parameters
+    ----------
+    db_path:
+        Path to the DuckDB database file.
+    window_limit:
+        Number of latest events to display in the UI window (newest first).
+    window_size:
+        Rolling window size used by analytics.
+    max_fetch_limit:
+        Safety cap for how many rows to fetch while searching for sufficient
+        lookback history.
+
+    Returns
+    -------
+    tuple[list[NormalizedSyntheticEvent], list[NormalizedSyntheticEvent]]
+        - window_events: latest N events (newest first)
+        - lookback_events: a superset of events that includes enough prior
+          history (when available) so rolling metrics are computed for every
+          event in the window.
+
+    Notes
+    -----
+    Rolling metrics for an event require `window_size` prior values in the same
+    (source_id, signal_name) group. This function will progressively fetch more
+    recent history until either:
+    - every window event has sufficient prior history within the fetched set, or
+    - the database does not contain enough data, or
+    - max_fetch_limit is reached.
+    """
+
+    if window_limit <= 0:
+        return ([], [])
+    if window_size < 1:
+        raise ValueError("window_size must be >= 1")
+
+    window_events = fetch_synthetic_events(db_path, limit=window_limit)
+    if not window_events:
+        return ([], [])
+
+    window_event_ids = {event.event_id for event in window_events}
+
+    def lookback_satisfied(events: list[NormalizedSyntheticEvent]) -> bool:
+        ordered = sorted(events, key=lambda e: e.event_ts_utc)
+        index_by_id: dict[str, int] = {}
+        group_positions: dict[tuple[str, str], int] = {}
+
+        for event in ordered:
+            key = (event.source_id, event.signal_name)
+            group_positions[key] = group_positions.get(key, 0) + 1
+            # Position is 1-based count within group; prior count is pos-1.
+            index_by_id[event.event_id] = group_positions[key] - 1
+
+        for event_id in window_event_ids:
+            prior_count = index_by_id.get(event_id)
+            if prior_count is None:
+                return False
+            if prior_count < window_size:
+                return False
+        return True
+
+    fetch_limit = min(max_fetch_limit, window_limit + window_size * 10)
+    while True:
+        lookback_events = fetch_synthetic_events(db_path, limit=fetch_limit)
+        if len(lookback_events) <= window_limit:
+            return (window_events, lookback_events)
+
+        if lookback_satisfied(lookback_events):
+            return (window_events, lookback_events)
+
+        if fetch_limit >= max_fetch_limit:
+            return (window_events, lookback_events)
+
+        fetch_limit = min(max_fetch_limit, fetch_limit * 2)
+
+
 def get_total_event_count(db_path: Path) -> int:
     """Return the total number of stored events.
 
