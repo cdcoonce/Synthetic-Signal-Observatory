@@ -25,6 +25,10 @@ from synthetic_signal_observatory.app_services import (
     get_total_event_count,
 )
 from synthetic_signal_observatory.analytics import compute_rolling_metrics
+from synthetic_signal_observatory.viz import (
+    build_signal_chart_rows,
+    build_signal_over_time_chart,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -116,49 +120,12 @@ def render_app() -> None:
     st.metric(label="Anomalies in view", value=anomaly_count)
 
     st.subheader("Signal over time")
-    chart_rows = sorted(
-        [
-            {
-                "event_ts": row.event_ts_utc,
-                "source_id": row.source_id,
-                "signal_name": row.signal_name,
-                "signal_value": row.signal_value,
-                "is_anomaly": row.is_anomaly,
-                "z_score": row.z_score,
-            }
-            for row in metrics
-        ],
-        key=lambda r: r["event_ts"],
-    )
-
-    # Avoid hard-coded colors; use size/opacity to emphasize anomalies.
-    base = (
-        alt.Chart(alt.Data(values=chart_rows))
-        .encode(
-            x=alt.X("event_ts:T", title="Event timestamp (UTC)"),
-            y=alt.Y("signal_value:Q", title="Signal value"),
-            # Explicit order avoids occasionally jumbled line connections.
-            order=alt.Order("event_ts:T"),
-            detail=["source_id:N", "signal_name:N"],
-            tooltip=[
-                alt.Tooltip("event_ts:T"),
-                alt.Tooltip("source_id:N"),
-                alt.Tooltip("signal_name:N"),
-                alt.Tooltip("signal_value:Q", format=".3f"),
-                alt.Tooltip("is_anomaly:N"),
-                alt.Tooltip("z_score:Q", format=".3f"),
-            ],
-        )
-    )
-
-    line = base.mark_line().encode(color=alt.Color("signal_name:N"))
-    points = base.mark_point().encode(
-        color=alt.Color("signal_name:N"),
-        opacity=alt.condition("datum.is_anomaly", alt.value(1.0), alt.value(0.3)),
-        size=alt.condition("datum.is_anomaly", alt.value(120), alt.value(30)),
-    )
-
-    st.altair_chart(line + points, use_container_width=True)
+    chart_rows = build_signal_chart_rows(metrics)
+    if not chart_rows:
+        st.info("No data to chart yet (generate events first).")
+    else:
+        chart = build_signal_over_time_chart(chart_rows)
+        st.altair_chart(chart, use_container_width=True)
 
     st.dataframe(
         [

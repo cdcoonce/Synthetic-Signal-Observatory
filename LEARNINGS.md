@@ -59,6 +59,26 @@ Explicit instruction for future agents.
 
 <!-- Add new entries below this line -->
 
+## 2025-12-27 — Altair Inline Data + Python datetimes Can Render Blank
+
+**Context**
+Streamlit renders the time-series chart using Altair with inline data (`alt.Data(values=...)`).
+
+**What Failed**
+Charts intermittently rendered with no marks even though data existed.
+
+**Root Cause**
+Timezone-aware Python `datetime` objects in inline `values` are not reliably JSON-serializable
+through Altair/Vega-Lite, and the resulting spec can collapse or fail silently.
+
+**Resolution / Workaround**
+- Convert timestamps to ISO-8601 strings (UTC) before passing them to Altair inline `values`, or
+- Use a DataFrame-based chart path that handles datetime conversion explicitly.
+- Add a unit test that calls `chart.to_dict()` and asserts `data.values` contains string timestamps.
+
+**Do Not Repeat**
+Do NOT pass Python `datetime` objects directly into `alt.Data(values=...)`.
+
 ## 2025-01-02 — Windows Line Endings Break CLI Scripts
 
 **Context**
