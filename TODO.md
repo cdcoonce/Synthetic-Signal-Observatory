@@ -33,6 +33,7 @@ It is intentionally lightweight and execution-focused.
 - [x] Ensure rolling metrics are available for all displayed window points (use DB lookback)
 - [x] Prevent blank Altair charts (serialize timestamps; add regression tests)
 - [x] Add chart filters (source/signal) to reduce overplotting
+- [x] Make chart pan/zoom explore full DB history
 - [ ] Centralize app configuration (db path, batch size, seed) in one place
 - [ ] Add lightweight logging configuration for local runs (avoid noisy reruns)
 
@@ -41,6 +42,7 @@ It is intentionally lightweight and execution-focused.
 <!-- Important but not urgent -->
 
 - [ ] Add efficient DuckDB queries (e.g., `COUNT(*)`, latest N) without full-table fetch
+- [ ] Add performance guardrails for full-history charting (cap/aggregation)
 - [ ] Enforce/dedupe `event_id` on insert (document the approach; consider constraints vs merge)
 - [ ] Add CI (GitHub Actions) to run `uv run pytest`
 - [ ] Make imports work without `tests/conftest.py` sys.path tweak (package/editable install)

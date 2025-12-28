@@ -156,6 +156,49 @@ def get_latest_events(db_path: Path, *, limit: int) -> list[NormalizedSyntheticE
     return fetch_synthetic_events(db_path, limit=limit)
 
 
+def get_events_for_chart(
+    db_path: Path,
+    *,
+    source_id: str | None = None,
+    signal_name: str | None = None,
+    limit: int | None = None,
+) -> list[NormalizedSyntheticEvent]:
+    """Fetch events intended for charting.
+
+    Parameters
+    ----------
+    db_path:
+        Path to the DuckDB database file.
+    source_id:
+        Optional source filter. When provided, only events for this source are
+        returned.
+    signal_name:
+        Optional signal filter. When provided, only events for this signal are
+        returned.
+    limit:
+        Optional maximum number of rows to return. Use ``None`` to fetch all
+        persisted events.
+
+    Returns
+    -------
+    list[NormalizedSyntheticEvent]
+        Events ordered newest-first (as stored query ordering).
+
+    Notes
+    -----
+    This is intentionally a thin wrapper around persistence so Streamlit can
+    fetch full history for pan/zoom exploration without duplicating filtering
+    logic in the UI layer.
+    """
+
+    events = fetch_synthetic_events(db_path, limit=limit)
+    if source_id is not None:
+        events = [event for event in events if event.source_id == source_id]
+    if signal_name is not None:
+        events = [event for event in events if event.signal_name == signal_name]
+    return events
+
+
 def get_events_for_rolling_window(
     db_path: Path,
     *,
