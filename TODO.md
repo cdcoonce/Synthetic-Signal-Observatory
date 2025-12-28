@@ -29,7 +29,7 @@ It is intentionally lightweight and execution-focused.
 <!-- Highest-priority work -->
 
 - [x] Add analytics controls in Streamlit (slider for `window_size`, slider for `z_threshold`)
-- [ ] Add at least one chart (signal over time) with anomalies visible
+- [x] Add at least one chart (signal over time) with anomalies visible
 - [ ] Centralize app configuration (db path, batch size, seed) in one place
 - [ ] Add lightweight logging configuration for local runs (avoid noisy reruns)
 
