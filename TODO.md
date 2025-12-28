@@ -30,6 +30,9 @@ It is intentionally lightweight and execution-focused.
 
 - [x] Add analytics controls in Streamlit (slider for `window_size`, slider for `z_threshold`)
 - [x] Add at least one chart (signal over time) with anomalies visible
+- [x] Ensure rolling metrics are available for all displayed window points (use DB lookback)
+- [x] Prevent blank Altair charts (serialize timestamps; add regression tests)
+- [x] Add chart filters (source/signal) to reduce overplotting
 - [ ] Centralize app configuration (db path, batch size, seed) in one place
 - [ ] Add lightweight logging configuration for local runs (avoid noisy reruns)
 
@@ -59,4 +62,7 @@ It is intentionally lightweight and execution-focused.
 - [x] Implement pure event generator + tests
 - [x] Wire Streamlit to generate, persist, and display latest events
 - [x] Implement rolling analytics + anomaly flag + tests; display in Streamlit
+- [x] Stabilize chart rendering and ordering; add visualization helpers + tests
+- [x] Add DB lookback strategy so rolling stats are only `None` when DB lacks history
+- [x] Add chart filters for readability
 

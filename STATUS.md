@@ -69,3 +69,19 @@ This is the fastest way for a new agent to orient.
 ### Blocked / Risks
 - No technical blockers yet.
 - No open decision blockers.
+
+## Status as of 2025-12-27 (latest)
+
+### Working
+- Streamlit dashboard generates events, persists to DuckDB, and renders tables + chart.
+- Chart rendering is guarded by tests (Altair inline-data timestamps are serialized as ISO-8601 strings).
+- New events are snapped to whole-second UTC timestamps and batches advance `start_ts` to avoid overlaps.
+- Rolling analytics for the displayed window uses DuckDB lookback; metrics are only `None` when the database lacks sufficient history.
+- Chart supports filtering by `source_id` and `signal_name` to reduce overplotting.
+
+### In progress
+- Centralize app configuration (db path, batch size, seed).
+- Add lightweight logging configuration for local runs.
+
+### Blocked / Risks
+- None currently; next risks are mostly UX density and query performance as data grows.
