@@ -16,6 +16,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import altair as alt
 import streamlit as st
 
 from synthetic_signal_observatory.app_services import (
@@ -113,6 +114,47 @@ def render_app() -> None:
     )
     anomaly_count = sum(1 for row in metrics if row.is_anomaly)
     st.metric(label="Anomalies in view", value=anomaly_count)
+
+    st.subheader("Signal over time")
+    chart_rows = [
+        {
+            "event_ts": row.event_ts_utc,
+            "source_id": row.source_id,
+            "signal_name": row.signal_name,
+            "signal_value": row.signal_value,
+            "is_anomaly": row.is_anomaly,
+            "z_score": row.z_score,
+        }
+        for row in metrics
+    ]
+
+    # Avoid hard-coded colors; use size/opacity to emphasize anomalies.
+    base = (
+        alt.Chart(alt.Data(values=chart_rows))
+        .encode(
+            x=alt.X("event_ts:T", title="Event timestamp (UTC)"),
+            y=alt.Y("signal_value:Q", title="Signal value"),
+            detail=["source_id:N", "signal_name:N"],
+            tooltip=[
+                alt.Tooltip("event_ts:T"),
+                alt.Tooltip("source_id:N"),
+                alt.Tooltip("signal_name:N"),
+                alt.Tooltip("signal_value:Q", format=".3f"),
+                alt.Tooltip("is_anomaly:N"),
+                alt.Tooltip("z_score:Q", format=".3f"),
+            ],
+        )
+    )
+
+    line = base.mark_line().encode(color=alt.Color("signal_name:N"))
+    points = base.mark_point().encode(
+        color=alt.Color("signal_name:N"),
+        opacity=alt.condition("datum.is_anomaly", alt.value(1.0), alt.value(0.3)),
+        size=alt.condition("datum.is_anomaly", alt.value(120), alt.value(30)),
+    )
+
+    st.altair_chart(line + points, use_container_width=True)
+
     st.dataframe(
         [
             {
