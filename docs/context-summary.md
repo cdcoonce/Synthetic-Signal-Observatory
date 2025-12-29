@@ -132,8 +132,3 @@ It focuses on **what each file/directory is for**, where key logic lives, and ho
 - Altair inline data + Python `datetime` objects can render blank; `viz.py` uses ISO-8601 strings.
 - Live Mode continuously appends to DuckDB; without retention/purge logic, DB growth is unbounded.
 - Destructive DB reset is env-gated (`SSO_ALLOW_DB_RESET=1`) and requires an in-UI confirmation.
-
-## Known Doc Drift
-
-- `README.md` and `DECISIONS.md` reference `docs/planning/*` files, but the `docs/` directory is currently empty in this workspace aside from this summary.
-  - Treat the “memory” files (`STATUS.md`, `TODO.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `LEARNINGS.md`) as the authoritative guidance until planning docs are restored.

@@ -7,7 +7,6 @@ from synthetic_signal_observatory.app_services import (
     generate_and_persist_events,
     get_events_for_chart,
     get_events_for_rolling_window,
-    get_latest_events,
     get_total_event_count,
     reset_database,
     should_enable_db_reset,
@@ -33,7 +32,7 @@ def test_generate_and_persist_and_read_back(tmp_path: Path) -> None:
     assert inserted == 5
     assert get_total_event_count(db_path) == 5
 
-    latest = get_latest_events(db_path, limit=3)
+    latest = get_events_for_chart(db_path, limit=3)
     assert len(latest) == 3
     assert latest[0].event_ts_utc >= latest[-1].event_ts_utc
 
@@ -65,7 +64,7 @@ def test_generate_and_persist_advances_start_ts_to_avoid_overlaps(tmp_path: Path
         step=step,
     )
 
-    events = get_latest_events(db_path, limit=50)
+    events = get_events_for_chart(db_path, limit=50)
     run1 = [event for event in events if event.run_id == "run-1"]
     run2 = [event for event in events if event.run_id == "run-2"]
 

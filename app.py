@@ -21,7 +21,6 @@ from synthetic_signal_observatory.app_services import (
     generate_and_persist_events,
     get_events_for_chart,
     get_events_for_rolling_window,
-    get_latest_events,
     get_total_event_count,
     reset_database,
     should_enable_db_reset,
@@ -104,17 +103,15 @@ def render_app() -> None:
     st.title("Synthetic Signal Observatory")
     st.markdown(
         "This dashboard generates synthetic signals, persists them in DuckDB, "
-        "and shows the latest events."
+        "and shows rolling metrics."
     )
 
     config = load_app_config()
     db_path = config.db_path
 
     # -------------------------------------------------------------------------
-    # Live Mode Controls (outside fragment so they persist across refreshes)
+    # Sidebar Controls (inputs live here)
     # -------------------------------------------------------------------------
-    st.subheader("Live Mode")
-
     # Pull available filter options outside the fragment so the controls remain
     # stable across auto-refresh reruns.
     events_for_filter_options = get_events_for_chart(db_path, limit=None)
@@ -131,10 +128,12 @@ def render_app() -> None:
     if selected_signal not in signal_options:
         selected_signal = "(all)"
 
-    col_live_toggle, col_interval, col_source, col_signal = st.columns([2, 1, 1, 1])
+    with st.sidebar:
+        st.subheader("Live Mode")
 
-    with col_live_toggle:
-        initial_live_mode = bool(st.session_state.get("live_mode", config.auto_run_default))
+        initial_live_mode = bool(
+            st.session_state.get("live_mode", config.auto_run_default)
+        )
         live_mode_label = "🟢 Live Mode" if initial_live_mode else "🔴 Live Mode"
         live_mode = st.toggle(
             label=live_mode_label,
@@ -143,7 +142,6 @@ def render_app() -> None:
             help="Auto-generate events at the configured interval",
         )
 
-    with col_interval:
         refresh_interval = int(
             st.number_input(
                 label="Refresh interval (seconds)",
@@ -156,7 +154,6 @@ def render_app() -> None:
             )
         )
 
-    with col_source:
         st.selectbox(
             label="Source",
             options=source_options,
@@ -165,7 +162,6 @@ def render_app() -> None:
             disabled=filters_disabled,
         )
 
-    with col_signal:
         st.selectbox(
             label="Signal",
             options=signal_options,
@@ -174,10 +170,85 @@ def render_app() -> None:
             disabled=filters_disabled,
         )
 
+        st.subheader("Analytics (rolling metrics)")
+        st.slider(
+            label="Rolling window size",
+            min_value=2,
+            max_value=100,
+            value=5,
+            step=1,
+            key="rolling_window_size",
+        )
+        st.slider(
+            label="Z-score threshold",
+            min_value=0.5,
+            max_value=10.0,
+            value=3.0,
+            step=0.5,
+            key="z_threshold",
+        )
+
+        st.subheader("Database")
+        if not config.allow_db_reset:
+            st.info(
+                "Database reset is disabled. Set `SSO_ALLOW_DB_RESET=1` to enable it."
+            )
+        confirm_reset = st.checkbox(
+            label="I understand this deletes all stored events",
+            value=False,
+            disabled=False,
+        )
+        reset_clicked = st.button(
+            "Reset database",
+            disabled=not should_enable_db_reset(
+                allow_db_reset=config.allow_db_reset,
+                confirm_reset=confirm_reset,
+            ),
+        )
+        if reset_clicked:
+            reset_database(db_path)
+            st.success("Database reset: synthetic_events table dropped")
+            st.rerun()
+
     # -------------------------------------------------------------------------
     # Signal over time (chart directly under Live Mode controls)
     # -------------------------------------------------------------------------
     st.subheader("Signal over time")
+
+    # Chart navigation + manual generation controls (kept outside fragment so
+    # clicks are handled predictably even when the fragment auto-refreshes).
+    nav_cols = st.columns(4)
+    with nav_cols[0]:
+        back_clicked = st.button(
+            "◀ Back",
+            help="Shift view window backward",
+            key="chart_nav_back",
+        )
+    with nav_cols[1]:
+        recenter_clicked = st.button(
+            "Recenter on latest",
+            help="Resume auto-centering on newly generated data",
+            key="chart_nav_recenter",
+        )
+    with nav_cols[2]:
+        generate_clicked = False
+        if not live_mode:
+            generate_clicked = st.button(
+                "Generate a batch",
+                key="chart_nav_generate",
+            )
+        else:
+            st.write("")
+    with nav_cols[3]:
+        forward_clicked = st.button(
+            "Forward ▶",
+            help="Shift view window forward",
+            key="chart_nav_forward",
+        )
+
+    if generate_clicked:
+        inserted = _generate_batch(config)
+        st.success(f"Inserted {inserted} events")
 
     # Server-driven chart window state. This is outside the fragment so the
     # controls are stable across auto-refresh.
@@ -189,21 +260,6 @@ def render_app() -> None:
         st.session_state["chart_center_ts_utc"] = datetime.now(tz=UTC)
 
     nav_step_seconds = max(1, int(st.session_state["chart_window_seconds"] / 2))
-    col_back, col_recenter, col_generate, col_forward = st.columns([1, 2, 2, 1])
-    with col_back:
-        back_clicked = st.button("◀ Back", help="Shift view window backward")
-    with col_recenter:
-        recenter_clicked = st.button(
-            "Recenter on latest",
-            help="Resume auto-centering on newly generated data",
-        )
-    with col_generate:
-        if not live_mode:
-            if st.button("Generate a small batch"):
-                inserted = _generate_batch(config)
-                st.success(f"Inserted {inserted} events")
-    with col_forward:
-        forward_clicked = st.button("Forward ▶", help="Shift view window forward")
 
     if back_clicked:
         st.session_state["follow_latest"] = False
@@ -294,26 +350,7 @@ def render_app() -> None:
         anomaly_count = sum(1 for row in metrics if row.is_anomaly)
         st.metric(label="Anomalies in view", value=anomaly_count)
 
-        # Latest events table
-        latest_events = get_latest_events(db_path, limit=20)
-        st.markdown("**Latest events**")
-        st.dataframe(
-            [
-                {
-                    "event_id": event.event_id,
-                    "event_ts": event.event_ts_utc,
-                    "event_date": event.event_date,
-                    "source_id": event.source_id,
-                    "signal_name": event.signal_name,
-                    "signal_value": event.signal_value,
-                    "quality_score": event.quality_score,
-                    "run_id": event.run_id,
-                }
-                for event in latest_events
-            ],
-            width='stretch',
-            hide_index=True,
-        )
+        # (Removed latest-events table: UI now relies on rolling metrics only)
 
         # Analytics table
         st.markdown("**Rolling metrics**")
@@ -340,56 +377,6 @@ def render_app() -> None:
 
     # Invoke the fragment
     live_panel()
-
-
-
-    # -------------------------------------------------------------------------
-    # Analytics Controls (rolling metrics)
-    # -------------------------------------------------------------------------
-    st.subheader("Analytics (rolling metrics)")
-
-    col_window, col_z = st.columns(2)
-    with col_window:
-        st.slider(
-            label="Rolling window size",
-            min_value=2,
-            max_value=100,
-            value=5,
-            step=1,
-            key="rolling_window_size",
-        )
-    with col_z:
-        st.slider(
-            label="Z-score threshold",
-            min_value=0.5,
-            max_value=10.0,
-            value=3.0,
-            step=0.5,
-            key="z_threshold",
-        )
-
-    # -------------------------------------------------------------------------
-    # Database Reset Controls (moved below chart)
-    # -------------------------------------------------------------------------
-    st.subheader("Database")
-    if not config.allow_db_reset:
-        st.info("Database reset is disabled. Set `SSO_ALLOW_DB_RESET=1` to enable it.")
-    confirm_reset = st.checkbox(
-        label="I understand this deletes all stored events",
-        value=False,
-        disabled=False,
-    )
-    reset_clicked = st.button(
-        "Reset database",
-        disabled=not should_enable_db_reset(
-            allow_db_reset=config.allow_db_reset,
-            confirm_reset=confirm_reset,
-        ),
-    )
-    if reset_clicked:
-        reset_database(db_path)
-        st.success("Database reset: synthetic_events table dropped")
-        st.rerun()
 
     logger.info("Streamlit app rendered")
 
