@@ -27,6 +27,7 @@ Each decision MUST include:
 
 - **ID** (monotonic, e.g. D-0006)
 - **Status**: Proposed | Accepted | Superseded
+- **Summary**: Short summary
 - **Context**: Why this decision was needed
 - **Decision**: What was chosen
 - **Consequences**: What this enables / restricts
@@ -41,6 +42,7 @@ Use bullets. Be explicit.
 ### D-000X — Short title
 
 - Status:
+- Summary:
 - Date:
 
 #### Context
@@ -161,3 +163,25 @@ Use bullets. Be explicit.
 - Only the fragment re-executes; the rest of the page remains stable.
 - Database may grow unbounded if left running; future work may add retention/purge logic.
 - See `docs/planning/REALTIME_DISPLAY_PLAN.md` for full implementation details.
+
+### D-0007 — Center chart window on latest data (server-driven domain)
+
+- Status: Accepted
+- Date: 2025-12-28
+
+#### Context
+- Live Mode appends new events continuously.
+- When plotting full history, the newest data is often pushed to the far right, making it harder to see “what just happened”.
+- Streamlit + Altair interactivity supports client-side pan/zoom, but pan/zoom events do not feed back into Python state without a custom component.
+
+#### Decision
+- The dashboard sets an explicit x-axis domain for the signal chart, centered on a “chart center” timestamp with **future padding**.
+- A session flag `follow_latest` controls whether the center auto-updates to the latest timestamp.
+- Back/Forward buttons shift the center by 50% of the window and set `follow_latest=False`.
+- A Recenter button sets `follow_latest=True`.
+- Live Mode event generation continues regardless of `follow_latest`.
+
+#### Consequences
+- The newest data stays in the middle of the chart by default during Live Mode.
+- Users can explore history with Back/Forward (server-driven) and pan/zoom locally (client-side).
+- Client-side pan/zoom does not persist across reruns and does not automatically disable `follow_latest`.

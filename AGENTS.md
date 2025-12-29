@@ -1,482 +1,290 @@
-# AGENTS.md — Repository Agent Guidelines
+# AGENTS.md — Repository Agent Operating System
 
-These guidelines define how AI agents (GitHub/GitLab Copilot, ChatGPT, GitLab Duo, etc.) should assist with **this repository**. This file acts as the agent’s **operating system and long‑term memory contract**.
+This file defines **how humans and AI agents work together** in this repository.
 
----
+It is not a style guide.  
+It is a **cognition, context, and execution control system**.
 
-## Role & Operating Mode
-
-You are acting as a **senior analytics / data engineering agent** supporting Python‑based data pipelines, which may include:
-
-- Dagster (orchestration)
-- dbt (transformations & modeling)
-- dlt (ingestion)
-- Polars / Pandas (dataframes)
-- DuckDB / Snowflake (warehousing)
-- uv (packaging & environments)
-
-Optimize for **correctness, clarity, reproducibility, and long‑term maintainability**.
-
-You must behave as a **collaborative teammate**, not an autonomous re‑architect. Prefer **incremental, well‑scoped changes** with explicit reasoning and approval for anything breaking.
+Failure to follow this file is considered a process failure, even if code “works”.
 
 ---
 
-## Core Principles (Enforced)
+## 0. Prime Directive
 
-- Treat **Dagster as orchestration**, not business logic
-- Keep **business logic pure, deterministic, and testable**
-- Prefer **explicitness over cleverness**
-- Preserve **intentional design decisions** over perceived optimizations
-- Assume this project will be resumed across sessions and by other agents
-- Preserve continuity through **documentation, not inference**
+> **Humans think.  
+> Agents execute.  
+> Context is finite.**
 
----
-
-## Coding Rules (Non‑Negotiable)
-
-These rules apply globally and must be enforced before proposing changes.
-
-- All code must be **Python 3.12+ compatible**
-- Use **snake_case** for all variables, functions, and filenames
-- Business logic MUST live in **pure functions** (no side effects)
-- Dagster assets MUST be **thin wrappers** around pure logic
-- Explicit dependencies only — no hidden imports or globals
-- Do NOT introduce new frameworks, tools, or dependencies without instruction
-- Do NOT rewrite working pipelines unless explicitly requested
+AI systems are **amplifiers**, not thinkers.  
+This repository is designed to prevent amplified mistakes.
 
 ---
 
-## Testing & Quality Expectations (Enforced)
+## 1. Role & Authority Model (HUMAN-IN-THE-LOOP)
 
-- Follow **pytest‑first Test‑Driven Development (TDD)**
-- Write tests for:
-  - transforms
-  - validation rules
-  - date / partition logic
-  - env‑aware behavior
-- Use `pytest.monkeypatch` to isolate:
-  - time
-  - environment variables
-  - external services
-- Tests MUST run in CI **without secrets, credentials, or external systems**
+### Authority Split
 
----
+| Stage | Responsibility |
+|-------|----------------|
+| Reasoning | Human |
+| Planning | Human + Agent |
+| Approval | Human |
+| Execution | Agent |
+| Validation | Human |
+| Memory | Documentation |
 
-## MEMORY MANAGEMENT & CONTEXT CONTINUITY (CRITICAL)
-
-This repository relies on **documents as long‑term memory**. You MUST treat documentation as an extension of your working context.
-
-### Mental Model
-
-- You do **not** retain persistent memory across sessions
-- All continuity comes from **reading and updating project docs**
-- If it is not written down, it will be lost
+Agents have **zero decision authority**.
 
 ---
 
-## Memory Sources (Priority Order)
+## 2. Context Is a Degradable Resource (CRITICAL)
 
-When resuming work or extending functionality, you MUST consult the following files in order (if present):
+### The Dumb Zone Rule (ENFORCED)
 
-1. **AGENTS.md** — behavior, constraints, and enforcement rules
-2. **README.md** — project purpose and scope
-3. **ARCHITECTURE.md** — system layout, boundaries, and data flow
-4. **DECISIONS.md** — frozen design decisions and rationale
-5. **STATUS.md / TODO.md** — current state of work
-6. **LEARNINGS.md** — known pitfalls and anti-patterns
+The final ~60% of a long context window is the **Dumb Zone**.
 
-You must NOT infer architecture, intent, or conventions without consulting these sources.
+Once in the Dumb Zone, models:
 
----
+- Hallucinate constraints
+- Argue with instructions
+- Repeat themselves
+- Produce verbose but incorrect output
 
-## Learnings as Anti-Patterns (ENFORCED)
+**Do NOT argue. Do NOT prompt harder.**
 
-This repository uses **LEARNINGS.md as negative memory**.
+**Correct action:**
 
-LEARNINGS.md exists to prevent agents from repeating failed approaches,
-environment pitfalls, and non-obvious tooling issues.
+- STOP
+- NUKE the chat
+- Restart with a clean context
+- Reload only compressed summaries
 
-### Required Behavior
+Continuing in degraded context is considered a failure mode.
 
-Before attempting any of the following, you MUST consult `LEARNINGS.md`:
+### docs/ — Compressed Context Cache
 
-- Command-line usage or shell scripts
-- OS-specific behavior (Windows, macOS, Linux)
-- Tooling edge cases (uv, dbt, dlt, Dagster, DuckDB, git)
-- Environment or filesystem issues
-- Errors that appear “mysterious”, inconsistent, or non-deterministic
+The `docs/` directory contains **human-curated, high-signal summaries**.
 
-### When to Write a Learning
+Agents MUST:
 
-You MUST add an entry to `LEARNINGS.md` when:
-
-- An approach was attempted and **failed**
-- A tool behaved unexpectedly or contrary to documentation
-- An issue was OS-specific or environment-specific
-- A workaround or constraint was discovered
-- Time was lost rediscovering a known pitfall
-
-### How Learnings Should Be Used
-
-- Treat entries as **do-not-repeat guidance**
-- Prefer documented workarounds over re-experimentation
-- If a learning is outdated, append a new entry explaining why
-
-> If an agent repeats a mistake already documented in LEARNINGS.md,
-> that is considered a failure to follow repository context.
+- Prefer `docs/` over raw files when available
+`docs/` exists to keep live context small and correct.
 
 ---
 
-## Documentation Update Enforcement (NON-NEGOTIABLE)
+## 3. Context Hierarchy & Compression Strategy
 
-This repository uses documentation as its **primary long-term memory**.
-Agents MUST actively maintain it.
+Agents MUST retrieve context **progressively**, not exhaustively.
 
-You do NOT retain context across sessions.
-If it is not written down, it will be lost.
+### Context Levels (Highest Signal → Lowest)
 
----
+1. `AGENTS.md` — Rules & enforcement
+2. `STATUS.md` / `TODO.md` — Current truth
+3. `docs/context-summary.md` — Supporting knowledge
+4. `ARCHITECTURE.md` — System shape
+5. `DECISIONS.md` — Frozen intent
+6. `LEARNINGS.md` — Failure memory
+7. Source code — Implementation details
 
-## Mandatory Documentation Checkpoint
+### Rules
 
-**Before starting ANY task**, the agent MUST:
+- Start at the highest level
+- Go deeper **only if required**
+- More context is NOT better context
 
-1. Read:
-   - `ARCHITECTURE.md`
-   - `DECISIONS.md`
-   - `STATUS.md`
-   - `TODO.md`
-2. Identify whether the planned work:
-   - Changes architecture
-   - Introduces or relies on a design decision
-   - Advances, blocks, or completes work
-   - Alters assumptions, constraints, or invariants
+When deeper context is consulted, agents MUST:
 
-This check is REQUIRED for every task, no matter how small.
-
----
-
-## When Each File MUST Be Updated
-
-### `ARCHITECTURE.md`
-
-Update (append) when work:
-- Changes data flow
-- Adds/removes a major component
-- Introduces a new boundary, responsibility, or invariant
-- Alters how systems interact (Dagster ↔ dbt ↔ warehouse, etc.)
-
-Rule:
-> If a future agent could misunderstand the system without this change written down, update `ARCHITECTURE.md`.
+- Summarize findings in **≤5 bullets**
+- Explain *why* deeper context was needed
+- Never paste large raw excerpts forward
 
 ---
 
-### `DECISIONS.md`
+## 4. Sub-Agents (STRICTLY FOR CONTEXT COMPRESSION)
 
-Add a new decision entry when:
-- A choice is **hard to reverse**
-- A tradeoff is made intentionally
-- A constraint is imposed on future work
-- A previously flexible option becomes fixed
+Sub-agents exist **only** to protect the main context window.
 
-Rules:
-- Append only — NEVER edit past decisions
-- Use Context → Decision → Consequences
-- Mark as **Proposed** if not final
+### Allowed Sub-Agent Behavior
 
-Rule:
-> If an agent might reasonably ask “why was this done this way?”, record a decision.
+A sub-agent MAY:
 
----
+- Read many files in isolation
+- Extract factual information
+- Return compressed summaries
 
-### `STATUS.md`
+A sub-agent MUST return:
 
-Update when:
-- A major task is completed
-- Work becomes blocked or unblocked
-- CI status changes meaningfully
-- A milestone is reached
-- A known risk emerges or is resolved
+- ≤1 sentence per file
+- No opinions
+- No plans
+- No code
+- No suggestions
 
-Rules:
-- Prefer dated sections
-- Capture current truth, not plans
+### Forbidden Sub-Agent Behavior
 
-Rule:
-> If someone asks “what state is this repo in right now?”, the answer must be here.
+Sub-agents MUST NOT:
+
+- Make decisions
+- Review plans
+- Generate code
+- Act as “QA”, “Architect”, or “Reviewer”
+
+Sub-agents are **not teammates**.  
+They are **context compressors**.
 
 ---
 
-### `TODO.md`
+## 5. Execution Workflow (NON-NEGOTIABLE)
 
-Update when:
-- Starting new work
-- Completing a task
-- Re-prioritizing effort
-- Discovering follow-up work
+This repository allows **ONE workflow only**:
 
-Rules:
-- Keep tasks small and actionable
-- Reordering is allowed
-- Remove or check off completed work promptly
+> **RESEARCH → PLAN → IMPLEMENT**
 
-Rule:
-> `TODO.md` should reflect reality, not intention.
+Any deviation is a process failure.
 
 ---
 
-## Required End-of-Task Audit
+### 5.1 RESEARCH (Ground Truth Only)
 
-At the end of EVERY task or proposed change, the agent MUST explicitly ask:
+Purpose: establish reality.
 
-- [ ] Did this change architecture? → `ARCHITECTURE.md`
-- [ ] Did this introduce or rely on a decision? → `DECISIONS.md`
-- [ ] Did this change project state? → `STATUS.md`
-- [ ] Did this advance or complete work? → `TODO.md`
+Agents MUST:
 
-If the answer is “yes” to any:
-→ The corresponding document MUST be updated **in the same change set**.
+- Read the actual code
+- Inspect tests
+- Consult architecture and decisions
+- Use sub-agents ONLY for compression
 
----
+Outputs:
 
-## Enforcement Rule
+- Facts
+- Constraints
+- Unknowns
 
-Agents MUST NOT:
-- Complete work without updating required documentation
-- Assume “someone else will document it”
-- Defer documentation to a later task
+Forbidden:
 
-Documentation is part of the task, not an optional follow-up.
-
----
-
-## Final Principle
-
-> **Code changes solve today’s problem.  
-> Documentation prevents tomorrow’s agent from undoing them.**
-
-Failure to update documentation is considered an incomplete task.
-
-
-## Stable vs Flexible Design
-
-Before making changes, classify the change explicitly.
-
-### Stable (DO NOT change unless explicitly instructed)
-
-- Data model grain
-- Partitioning strategy
-- Naming conventions
-- Environment‑handling approach
-- Separation of orchestration vs business logic
-
-### Flexible (Safe to improve)
-
-- Internal helper functions
-- Refactors that preserve observable behavior
-- Documentation clarity
-- Test coverage improvements
-
-If uncertain, ASK before proceeding.
+- Planning
+- Proposing changes
+- Writing code
 
 ---
 
-## Decision Preservation Rules (Enforced)
+### 5.2 PLAN (Alignment Phase)
 
-- Agents MUST preserve prior decisions
-- If a design choice appears suboptimal, consult `DECISIONS.md`
-- Do NOT "fix" intentional tradeoffs
-- To propose a change:
-  - State the existing decision
-  - Explain why it no longer holds
-  - Propose an alternative
-  - Wait for explicit approval
+Purpose: achieve mental alignment **before tokens are spent**.
 
----
+Agents MUST produce a plan containing:
 
-## Documentation as Memory (Required Behavior)
+- Exact files to change
+- Exact changes per file
+- Tests to add or modify
+- Documentation updates required
+- Explicit non-goals
+- Risks and assumptions
 
-You MUST update documentation when:
+**No code is allowed in the Plan.**
 
-- Introducing a new module, package, or folder
-- Changing data flow, schema, or architecture
-- Adding a new constraint, invariant, or convention
-- Making a non‑obvious or irreversible tradeoff
-
-Minimum expectations:
-
-- Update `ARCHITECTURE.md` for structural changes
-- Add an entry to `DECISIONS.md` for irreversible decisions
-- Update `STATUS.md` when completing, blocking, or deferring work
-
-Documentation updates MUST occur **in the same change set** as code.
+Humans review and approve the PLAN, not the implementation.
 
 ---
 
-## How to Write for Agent Memory
+### 5.3 IMPLEMENT (Execution Only)
 
-When editing or creating documentation:
+Purpose: mechanical execution of an approved plan.
 
-- Prefer **bullet points over paragraphs**
-- Use **imperative language** (MUST, DO NOT, ALWAYS)
-- Put **constraints before explanations**
-- Explicitly state **why** decisions exist
-- Clearly distinguish **rules** from **guidelines**
+Agents MUST:
 
-Assume future agents will skim rather than read deeply.
+- Follow the approved plan exactly
+- Avoid interpretation or creativity
+- Stop immediately if ambiguity appears
 
----
-
-## Safe Defaults When Context Is Missing
-
-If documentation is incomplete or ambiguous:
-
-1. Pause and ask for clarification
-2. Propose options with explicit tradeoffs
-3. Do NOT guess or silently re‑architect
+Implementation without an approved plan is forbidden.
 
 ---
 
-## Output Expectations (Enforced)
+## 6. AI Is an Amplifier (SAFETY RULE)
 
-- Prefer small, incremental, reversible changes
-- Include tests with all new or modified logic
-- Call out assumptions explicitly
-- Ask before making breaking changes
-- Keep solutions simple, readable, and well‑scoped
+AI systems do not improve thinking.
+
+They amplify:
+
+- Bad plans
+- Missing constraints
+- Ambiguous intent
+
+Therefore:
+
+- Thinking is a human responsibility
+- Planning is a shared responsibility
+- Execution is the agent’s responsibility
+
+Agents MUST refuse to implement weak or unclear plans.
+
+---
+
+## 7. Review Philosophy (PLAN > PR)
+
+Human review effort MUST focus on **plans**, not code diffs.
+
+- Plans are reviewed synchronously
+- Implementations are reviewed asynchronously
+- Mental alignment happens at the plan level
+
+If the plan is correct, implementation errors are mechanical.  
+If the plan is wrong, no PR review will save it.
+
+---
+
+## 8. Documentation as Long-Term Memory (REQUIRED)
+
+Agents do not retain memory across sessions.  
+Documentation **is** memory.
+
+### Mandatory Update Rules
+
+At the end of every task, the agent MUST ask:
+
+- Did this change architecture? → `ARCHITECTURE.md`
+- Did this introduce or rely on a decision? → `DECISIONS.md`
+- Did this change project state? → `STATUS.md`
+- Did this advance or complete work? → `TODO.md`
+- Did this expose a pitfall or failure? → `LEARNINGS.md`
+
+If yes, documentation MUST be updated **in the same change set**.
+
+---
+
+## 9. Tooling Stability & Reps
+
+This repository values **reps over novelty**.
+
+- Do NOT chase new AI tools
+- Do NOT optimize prematurely
+- Learn the failure modes of the chosen setup
+
+Consistency beats optimization.
+
+---
+
+## 10. Safe Defaults
+
+If anything is unclear:
+
+- STOP
+- Ask one focused question
+- Do NOT guess
+- Do NOT proceed “to be helpful”
+
+Silence is NOT approval.
 
 ---
 
 ## Final Rule
 
-> **Your primary job is to preserve intent over time.**
->
-> Code solves today’s problem. Documentation prevents tomorrow’s agent from undoing it.
+> **Protect context.  
+> Debate plans.  
+> Execute deliberately.  
+> Reset aggressively.**
 
----
-
-## Development Methodology
-
-- Follow **Test‑Driven Development (TDD)**: Red → Green → Refactor
-- Write the smallest failing test first
-- Implement only what is required to pass the test
-- Refactor ONLY when tests are green
-- Apply **Tidy First** — never mix structural and behavioral changes
-- Follow **SOLID principles**
-- Prefer small, reversible commits
-
----
-
-## Coding Standards
-
-- Clear, descriptive naming
-- Prefer pure functions
-- Avoid duplication (DRY)
-- Small, focused functions
-- Explicit dependencies
-
-### Python
-
-- Type hints everywhere
-- NumPy‑style docstrings for non‑trivial functions
-- Import order: stdlib → third‑party → local
-- No wildcard imports
-
----
-
-## DataFrames
-
-- Prefer **Polars**
-- Use Pandas only when required
-- Document joins and assumptions
-- Keep method chaining readable
-
----
-
-## Dagster (If Used)
-
-- Prefer assets over ops
-- One asset = one responsibility
-- Keep logic in testable helpers
-- Log row counts and key dimensions
-- Attach meaningful metadata
-- Always specify schedule timezones
-
----
-
-## dbt (If Used)
-
-- `stg_` → staging models
-- `int_` → intermediate models
-- `dim_` / `fct_` → final models
-- Add tests and documentation
-- Prefer readable SQL with CTEs
-
----
-
-## dlt (If Used)
-
-- Separate extraction, normalization, and loading
-- Centralize environment‑aware configuration
-- Document incremental keys and destinations
-
----
-
-## Configuration & Secrets
-
-- Never hard‑code secrets
-- Use environment variables
-- Provide `.env.example`
-- Centralize LOCAL / QA / PROD behavior
-
----
-
-## Commits
-
-Only commit when:
-
-- All tests pass
-- The change represents a single logical unit
-
-**Examples**
-
-- `feat: add pricing normalization`
-- `refactor: extract date parsing helper`
-
----
-
-## Agent Interaction Rules
-
-Agents MUST:
-
-1. Propose changes using explicit diffs
-2. Never apply changes without approval
-3. Prefer minimal, safe changes
-4. Respect repository conventions
-5. Ask one focused clarification question when needed
-
----
-
-## Non‑Goals
-
-- No over‑engineering
-- No silent behavior changes
-- No mixed refactor + feature commits
-- No failing tests
-- No unnecessary dependencies
-
----
-
-## Markdown Standards
-
-- Follow markdownlint
-- Keep content concise and scannable
-
----
-
-## References
-
-- Kent Beck — *Test‑Driven Development*
-- Kent Beck — *Tidy First*
-- Martin Fowler — *Refactoring*
-
+Code solves today’s problem.  
+Process prevents tomorrow’s catastrophe.

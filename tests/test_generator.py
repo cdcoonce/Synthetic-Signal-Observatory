@@ -89,6 +89,30 @@ def test_generate_synthetic_events_is_deterministic_given_seed() -> None:
     assert [event.signal_name for event in events_a] == [event.signal_name for event in events_b]
 
 
+def test_generate_synthetic_events_varies_across_run_ids() -> None:
+    """Different run_ids should produce different sequences.
+
+    This prevents the Streamlit Live Mode from looking like it is repeating the
+    exact same batch over and over when the base seed is constant.
+    """
+
+    base_params = dict(
+        count=25,
+        start_ts=datetime(2025, 12, 27, 12, 0, tzinfo=UTC),
+        seed=42,
+        source_ids=["s1"],
+        signal_names=["alpha"],
+        step=timedelta(seconds=1),
+    )
+
+    events_a = generate_synthetic_events(run_id="run-a", **base_params)
+    events_b = generate_synthetic_events(run_id="run-b", **base_params)
+
+    assert [event.signal_value for event in events_a] != [
+        event.signal_value for event in events_b
+    ]
+
+
 def test_generate_synthetic_events_requires_timezone_aware_start_ts() -> None:
     with pytest.raises(ValueError, match="timezone-aware"):
         generate_synthetic_events(

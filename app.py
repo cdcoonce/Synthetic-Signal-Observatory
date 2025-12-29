@@ -36,6 +36,35 @@ from synthetic_signal_observatory.viz import (
 logger = logging.getLogger(__name__)
 
 
+def _compute_centered_domain_iso(
+    *, center_ts_utc: datetime, window_seconds: int
+) -> tuple[str, str]:
+    """Compute an ISO-8601 x-domain centered on a timestamp.
+
+    Parameters
+    ----------
+    center_ts_utc:
+        Center timestamp for the domain. Must be timezone-aware.
+    window_seconds:
+        Total window width in seconds.
+
+    Returns
+    -------
+    tuple[str, str]
+        ``(domain_start, domain_end)`` as ISO-8601 UTC strings.
+    """
+
+    if center_ts_utc.tzinfo is None:
+        raise ValueError("center_ts_utc must be timezone-aware")
+    if window_seconds <= 0:
+        raise ValueError("window_seconds must be > 0")
+
+    half_window = timedelta(seconds=window_seconds / 2)
+    start_ts = (center_ts_utc - half_window).astimezone(UTC)
+    end_ts = (center_ts_utc + half_window).astimezone(UTC)
+    return start_ts.isoformat(), end_ts.isoformat()
+
+
 def _generate_batch(config: AppConfig) -> int:
     """Generate and persist a batch of synthetic events.
 
@@ -86,70 +115,108 @@ def render_app() -> None:
     # -------------------------------------------------------------------------
     st.subheader("Live Mode")
 
-    col_live_toggle, col_interval = st.columns([1, 1])
+    # Pull available filter options outside the fragment so the controls remain
+    # stable across auto-refresh reruns.
+    events_for_filter_options = get_events_for_chart(db_path, limit=None)
+    available_sources = sorted({event.source_id for event in events_for_filter_options})
+    available_signals = sorted({event.signal_name for event in events_for_filter_options})
+    source_options = ["(all)", *available_sources]
+    signal_options = ["(all)", *available_signals]
+    filters_disabled = not bool(events_for_filter_options)
+
+    selected_source = st.session_state.get("chart_source_filter", "(all)")
+    selected_signal = st.session_state.get("chart_signal_filter", "(all)")
+    if selected_source not in source_options:
+        selected_source = "(all)"
+    if selected_signal not in signal_options:
+        selected_signal = "(all)"
+
+    col_live_toggle, col_interval, col_source, col_signal = st.columns([2, 1, 1, 1])
 
     with col_live_toggle:
+        initial_live_mode = bool(st.session_state.get("live_mode", config.auto_run_default))
+        live_mode_label = "🟢 Live Mode" if initial_live_mode else "🔴 Live Mode"
         live_mode = st.toggle(
-            label="🟢 Live Mode",
-            value=config.auto_run_default,
+            label=live_mode_label,
+            value=initial_live_mode,
+            key="live_mode",
             help="Auto-generate events at the configured interval",
         )
 
     with col_interval:
-        refresh_interval = st.slider(
-            label="Refresh interval (seconds)",
-            min_value=1,
-            max_value=10,
-            value=config.auto_refresh_interval,
-            step=1,
-            disabled=not live_mode,
+        refresh_interval = int(
+            st.number_input(
+                label="Refresh interval (seconds)",
+                min_value=1,
+                max_value=60,
+                value=int(config.auto_refresh_interval),
+                step=1,
+                disabled=not live_mode,
+                help="How often the live panel refreshes and generates new events",
+            )
         )
 
-    if live_mode:
-        st.info(f"🔴 Streaming — generating events every {refresh_interval}s")
+    with col_source:
+        st.selectbox(
+            label="Source",
+            options=source_options,
+            index=source_options.index(selected_source),
+            key="chart_source_filter",
+            disabled=filters_disabled,
+        )
+
+    with col_signal:
+        st.selectbox(
+            label="Signal",
+            options=signal_options,
+            index=signal_options.index(selected_signal),
+            key="chart_signal_filter",
+            disabled=filters_disabled,
+        )
 
     # -------------------------------------------------------------------------
-    # Manual Generation (only when not in live mode)
+    # Signal over time (chart directly under Live Mode controls)
     # -------------------------------------------------------------------------
-    if not live_mode:
-        col_left, col_right = st.columns(2)
+    st.subheader("Signal over time")
 
-        with col_left:
+    # Server-driven chart window state. This is outside the fragment so the
+    # controls are stable across auto-refresh.
+    if "chart_window_seconds" not in st.session_state:
+        st.session_state["chart_window_seconds"] = 300
+    if "follow_latest" not in st.session_state:
+        st.session_state["follow_latest"] = bool(live_mode)
+    if "chart_center_ts_utc" not in st.session_state:
+        st.session_state["chart_center_ts_utc"] = datetime.now(tz=UTC)
+
+    nav_step_seconds = max(1, int(st.session_state["chart_window_seconds"] / 2))
+    col_back, col_recenter, col_generate, col_forward = st.columns([1, 2, 2, 1])
+    with col_back:
+        back_clicked = st.button("◀ Back", help="Shift view window backward")
+    with col_recenter:
+        recenter_clicked = st.button(
+            "Recenter on latest",
+            help="Resume auto-centering on newly generated data",
+        )
+    with col_generate:
+        if not live_mode:
             if st.button("Generate a small batch"):
                 inserted = _generate_batch(config)
                 st.success(f"Inserted {inserted} events")
+    with col_forward:
+        forward_clicked = st.button("Forward ▶", help="Shift view window forward")
 
-        with col_right:
-            total_rows = get_total_event_count(db_path)
-            st.metric(label="Total stored events", value=total_rows)
-
-    # -------------------------------------------------------------------------
-    # Analytics Controls (outside fragment so they persist)
-    # -------------------------------------------------------------------------
-    st.subheader("Analytics (rolling metrics)")
-
-    col_window, col_z = st.columns(2)
-    with col_window:
-        window_size = st.slider(
-            label="Rolling window size",
-            min_value=2,
-            max_value=100,
-            value=5,
-            step=1,
-        )
-    with col_z:
-        z_threshold = st.slider(
-            label="Z-score threshold",
-            min_value=0.5,
-            max_value=10.0,
-            value=3.0,
-            step=0.5,
-        )
-
-    # -------------------------------------------------------------------------
-    # Signal over time
-    # -------------------------------------------------------------------------
-    st.subheader("Signal over time")
+    if back_clicked:
+        st.session_state["follow_latest"] = False
+        st.session_state["chart_center_ts_utc"] = st.session_state[
+            "chart_center_ts_utc"
+        ] - timedelta(seconds=nav_step_seconds)
+    if forward_clicked:
+        st.session_state["follow_latest"] = False
+        st.session_state["chart_center_ts_utc"] = st.session_state[
+            "chart_center_ts_utc"
+        ] + timedelta(seconds=nav_step_seconds)
+    if recenter_clicked:
+        st.session_state["follow_latest"] = True
 
     # -------------------------------------------------------------------------
     # Live Panel Fragment — auto-refreshes when live_mode is enabled
@@ -159,30 +226,16 @@ def render_app() -> None:
     )
     def live_panel() -> None:
         """Fragment that displays metrics/chart/table and optionally generates events."""
+        window_size = int(st.session_state.get("rolling_window_size", 5))
+        z_threshold = float(st.session_state.get("z_threshold", 3.0))
+
         # Generate events when in live mode
         if live_mode:
             _generate_batch(config)
 
-        # Metrics
-        total_rows = get_total_event_count(db_path)
-        st.metric(label="Total stored events", value=total_rows)
-
-        # Chart (at the top of the fragment)
-        chart_events_all = get_events_for_chart(db_path, limit=None)
-        available_sources = sorted({event.source_id for event in chart_events_all})
-        available_signals = sorted({event.signal_name for event in chart_events_all})
-
-        source_options = ["(all)", *available_sources]
-        signal_options = ["(all)", *available_signals]
-
+        # Chart
         selected_source = st.session_state.get("chart_source_filter", "(all)")
         selected_signal = st.session_state.get("chart_signal_filter", "(all)")
-
-        if selected_source not in source_options:
-            selected_source = "(all)"
-        if selected_signal not in signal_options:
-            selected_signal = "(all)"
-
         chart_source = None if selected_source == "(all)" else selected_source
         chart_signal = None if selected_signal == "(all)" else selected_signal
 
@@ -192,6 +245,15 @@ def render_app() -> None:
             signal_name=chart_signal,
             limit=None,
         )
+
+        latest_chart_ts_utc = (
+            max((event.event_ts_utc for event in chart_events), default=None)
+            if chart_events
+            else None
+        )
+        if st.session_state.get("follow_latest") and latest_chart_ts_utc is not None:
+            st.session_state["chart_center_ts_utc"] = latest_chart_ts_utc
+
         chart_metrics = compute_rolling_metrics(
             chart_events[::-1],
             window_size=window_size,
@@ -202,28 +264,19 @@ def render_app() -> None:
         if not chart_rows:
             st.info("No data to chart yet (generate events first).")
         else:
-            chart = build_signal_over_time_chart(chart_rows)
+            domain_start, domain_end = _compute_centered_domain_iso(
+                center_ts_utc=st.session_state["chart_center_ts_utc"],
+                window_seconds=int(st.session_state["chart_window_seconds"]),
+            )
+            chart = build_signal_over_time_chart(
+                chart_rows,
+                x_domain=(domain_start, domain_end),
+            )
             st.altair_chart(chart, width='stretch')
 
-        # Filters (below the chart, side-by-side)
-        filters_disabled = not chart_events_all
-        col_source, col_signal = st.columns(2)
-        with col_source:
-            st.selectbox(
-                label="Source",
-                options=source_options,
-                index=source_options.index(selected_source),
-                key="chart_source_filter",
-                disabled=filters_disabled,
-            )
-        with col_signal:
-            st.selectbox(
-                label="Signal",
-                options=signal_options,
-                index=signal_options.index(selected_signal),
-                key="chart_signal_filter",
-                disabled=filters_disabled,
-            )
+        # Metrics (below the chart)
+        total_rows = get_total_event_count(db_path)
+        st.metric(label="Total stored events", value=total_rows)
 
         # Rolling metrics
         window_events, lookback_events = get_events_for_rolling_window(
@@ -287,6 +340,33 @@ def render_app() -> None:
 
     # Invoke the fragment
     live_panel()
+
+
+
+    # -------------------------------------------------------------------------
+    # Analytics Controls (rolling metrics)
+    # -------------------------------------------------------------------------
+    st.subheader("Analytics (rolling metrics)")
+
+    col_window, col_z = st.columns(2)
+    with col_window:
+        st.slider(
+            label="Rolling window size",
+            min_value=2,
+            max_value=100,
+            value=5,
+            step=1,
+            key="rolling_window_size",
+        )
+    with col_z:
+        st.slider(
+            label="Z-score threshold",
+            min_value=0.5,
+            max_value=10.0,
+            value=3.0,
+            step=0.5,
+            key="z_threshold",
+        )
 
     # -------------------------------------------------------------------------
     # Database Reset Controls (moved below chart)

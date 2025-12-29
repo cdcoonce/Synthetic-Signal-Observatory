@@ -52,6 +52,42 @@ def _stable_signal_base(signal_name: str) -> float:
     return float(int.from_bytes(digest[:2], byteorder="big") % 10)
 
 
+def _derive_rng_seed(*, seed: int, run_id: str, start_ts_utc: datetime) -> int:
+    """Derive a deterministic RNG seed from generation inputs.
+
+    Notes
+    -----
+    Using `random.Random(seed)` alone causes *every call* to generate the same
+    pseudo-random sequence, which makes live mode look like it is "repeating"
+    values batch after batch.
+
+    We instead derive a seed from the tuple (seed, run_id, start_ts_utc) so:
+    - Identical inputs remain deterministic.
+    - New `run_id` (or start timestamp) yields new values.
+
+    Parameters
+    ----------
+    seed:
+        Base seed provided by configuration.
+    run_id:
+        Run identifier (expected to change per batch in the app).
+    start_ts_utc:
+        Start timestamp normalized to whole-second UTC.
+
+    Returns
+    -------
+    int
+        An integer suitable for seeding `random.Random`.
+    """
+
+    digest = hashlib.sha256(
+        f"seed={seed}|run_id={run_id}|start_ts={start_ts_utc.isoformat()}".encode(
+            "utf-8"
+        )
+    ).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=False)
+
+
 def generate_synthetic_events(
     *,
     count: int,
@@ -109,11 +145,12 @@ def generate_synthetic_events(
     if step.total_seconds() <= 0:
         raise ValueError("step must be positive")
 
-    rng = random.Random(seed)
-
     # Snap to a whole-second grid to avoid microsecond-level timestamp tracks
     # which can collapse to the same rendered instant in Vega-Lite/Altair.
     start_ts_utc = start_ts.astimezone(UTC).replace(microsecond=0)
+
+    rng_seed = _derive_rng_seed(seed=seed, run_id=run_id, start_ts_utc=start_ts_utc)
+    rng = random.Random(rng_seed)
 
     events: list[SyntheticEvent] = []
     current_ts = start_ts_utc

@@ -94,3 +94,16 @@ This is the fastest way for a new agent to orient.
 ### Completed
 - Centralized app configuration (db path, batch size, seed) via `synthetic_signal_observatory.config`.
 - Faux real-time display using `st.fragment(run_every=...)` (D-0006: Accepted). Toggle enables auto-generation with configurable interval.
+
+## Status as of 2025-12-28
+
+### Working
+- Signal-over-time chart uses a server-driven x-domain window centered on the latest data (future padding) during Live Mode.
+- Back/Forward buttons pause auto-centering (`follow_latest=False`) without stopping Live Mode generation.
+- Recenter button resumes auto-centering on new data (`follow_latest=True`).
+
+### In progress
+- Add lightweight logging configuration for local runs.
+
+### Blocked / Risks
+- Streamlit/Altair pan/zoom remains client-side only; it does not update server state without a custom component (expected limitation).

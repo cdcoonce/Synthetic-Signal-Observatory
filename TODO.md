@@ -28,26 +28,7 @@ It is intentionally lightweight and execution-focused.
 
 <!-- Highest-priority work -->
 
-- [x] Add analytics controls in Streamlit (slider for `window_size`, slider for `z_threshold`)
-- [x] Add at least one chart (signal over time) with anomalies visible
-- [x] Ensure rolling metrics are available for all displayed window points (use DB lookback)
-- [x] Prevent blank Altair charts (serialize timestamps; add regression tests)
-- [x] Add chart filters (source/signal) to reduce overplotting
-- [x] Make chart pan/zoom explore full DB history
-- [x] Centralize app configuration (db path, batch size, seed) in one place
 - [ ] Add lightweight logging configuration for local runs (avoid noisy reruns)
-- [x] Add DB reset button (env-gated) to drop `synthetic_events`
-
-### Faux Real-Time Display (D-0006) ✅ COMPLETED
-
-- [x] Verify/pin Streamlit ≥ 1.33 in `pyproject.toml`
-- [x] Add `SSO_AUTO_REFRESH_INTERVAL` and `SSO_AUTO_RUN_DEFAULT` to config
-- [x] Add Live Mode toggle + interval slider to UI (outside fragment)
-- [x] Create `@st.fragment(run_every=...)` wrapper for chart/table section
-- [x] Conditionally generate events inside fragment when live mode enabled
-- [x] Add visual indicator (spinner / timestamp) for streaming state
-- [x] Write/adjust tests for new config options
-- [x] Update `.env.example` with new config vars
 
 ## NEXT
 
@@ -55,16 +36,17 @@ It is intentionally lightweight and execution-focused.
 
 - [ ] Add efficient DuckDB queries (e.g., `COUNT(*)`, latest N) without full-table fetch
 - [ ] Add performance guardrails for full-history charting (cap/aggregation)
+- [ ] Replace any remaining `use_container_width` usages (Streamlit deprecation)
 - [ ] Enforce/dedupe `event_id` on insert (document the approach; consider constraints vs merge)
 - [ ] Add CI (GitHub Actions) to run `uv run pytest`
 - [ ] Make imports work without `tests/conftest.py` sys.path tweak (package/editable install)
 - [ ] Add data-retention/purge logic to prevent unbounded DB growth (live mode risk)
+- [ ] Add deployment notes + screenshots/GIFs to README
 
 ## LATER
 
 <!-- Nice-to-have or exploratory -->
 
-- [ ] Add deployment notes + screenshots/GIFs to README
 - [ ] Add Streamlit Community Cloud deployment notes (uv setup, Python version)
 - [ ] Persist derived analytics outputs (optional; requires schema + decision)
 
@@ -80,4 +62,13 @@ It is intentionally lightweight and execution-focused.
 - [x] Stabilize chart rendering and ordering; add visualization helpers + tests
 - [x] Add DB lookback strategy so rolling stats are only `None` when DB lacks history
 - [x] Add chart filters for readability
+- [x] Centralize app configuration (db path, batch size, seed) in one place
+- [x] Add DB reset button (env-gated) to drop `synthetic_events`
+- [x] Add analytics controls in Streamlit (slider for `window_size`, slider for `z_threshold`)
+- [x] Add at least one chart (signal over time) with anomalies visible
+- [x] Ensure rolling metrics are available for all displayed window points (use DB lookback)
+- [x] Prevent blank Altair charts (serialize timestamps; add regression tests)
+- [x] Make chart pan/zoom explore full DB history
+- [x] Center chart window on latest data (future padding) with Back/Forward/Recenter controls
+- [x] Faux Real-Time Display (D-0006): Live Mode toggle + auto-refresh fragment + config/tests
 

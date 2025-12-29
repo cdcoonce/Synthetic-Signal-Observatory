@@ -57,13 +57,20 @@ def build_signal_chart_rows(metrics: Sequence[RollingMetricRow]) -> list[dict[st
     ]
 
 
-def build_signal_over_time_chart(chart_rows: Sequence[Mapping[str, Any]]) -> alt.Chart:
+def build_signal_over_time_chart(
+    chart_rows: Sequence[Mapping[str, Any]],
+    x_domain: tuple[str, str] | None = None,
+) -> alt.Chart:
     """Build the layered Altair chart used in the Streamlit dashboard.
 
     Parameters
     ----------
     chart_rows:
         Rows as produced by `build_signal_chart_rows`.
+    x_domain:
+        Optional explicit x-axis domain as a tuple of ISO-8601 strings
+        ``(domain_start, domain_end)``. This is used to implement a stable,
+        server-driven time window (e.g., center-on-latest with future padding).
 
     Returns
     -------
@@ -71,10 +78,27 @@ def build_signal_over_time_chart(chart_rows: Sequence[Mapping[str, Any]]) -> alt
         A layered Altair chart (line + points) suitable for Streamlit.
     """
 
+    if x_domain is not None:
+        if len(x_domain) != 2:
+            raise ValueError("x_domain must be a 2-tuple of (start, end).")
+        domain_start, domain_end = x_domain
+        if not isinstance(domain_start, str) or not isinstance(domain_end, str):
+            raise TypeError("x_domain values must be ISO-8601 strings.")
+    else:
+        domain_start, domain_end = None, None
+
+    x_encoding = alt.X("event_ts:T", title="Event timestamp (UTC)")
+    if domain_start is not None and domain_end is not None:
+        x_encoding = alt.X(
+            "event_ts:T",
+            title="Event timestamp (UTC)",
+            scale=alt.Scale(domain=[domain_start, domain_end]),
+        )
+
     base = (
         alt.Chart(alt.Data(values=list(chart_rows)))
         .encode(
-            x=alt.X("event_ts:T", title="Event timestamp (UTC)"),
+            x=x_encoding,
             y=alt.Y("signal_value:Q", title="Signal value"),
             # Explicit order avoids jumbled line connections.
             order=alt.Order("event_ts:T"),
