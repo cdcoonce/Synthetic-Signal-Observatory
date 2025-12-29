@@ -2,12 +2,8 @@
 
 Portfolio project: a Python-native, deployable, interactive dashboard that continuously generates synthetic signals, persists them locally, runs a lightweight analytics step, and visualizes results with interactive controls.
 
-**Project plan**
-- See [docs/planning/SETUP_INSTRUCTIONS.md](docs/planning/SETUP_INSTRUCTIONS.md) for the high-level intent and phases.
-
 **Repo memory (read first)**
 - [AGENTS.md](AGENTS.md): agent rules and collaboration constraints
-- [DECISIONS.md](DECISIONS.md): append-only decision log (e.g., framework choice)
 - [ARCHITECTURE.md](ARCHITECTURE.md): architecture boundaries, data model, and invariants (living doc)
 - [STATUS.md](STATUS.md): current state snapshot
 - [TODO.md](TODO.md): work queue
